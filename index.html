@@ -41,9 +41,22 @@
 
     /* ===== 顶部标题 ===== */
     header {
+      position: relative;
       padding: 18px 16px 6px;
       text-align: center;
       flex: none;
+    }
+    .reset-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      border: 1px solid var(--pink-light);
+      background: #fff;
+      color: var(--text-weak);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
     }
     header h1 {
       margin: 0;
@@ -338,6 +351,7 @@
   <header>
     <h1>琪琪点菜专用✨</h1>
     <div class="sub">点一点卡片选菜 · 右上角 ✕ 可删菜 · ＋ 添加新菜</div>
+    <button class="reset-btn" onclick="resetMenu()" title="恢复代码里的默认菜单">↺ 恢复默认</button>
   </header>
 
   <!-- 分类标签 -->
@@ -391,7 +405,7 @@
        每个分类：id(唯一) / name(名称) / emoji(图标) / dishes(菜品数组)
        增删菜品既可以在下面的数组里改，也可以在网页上直接点 ✕ / ＋。
        ============================================================ */
-    const MENU = [
+    const DEFAULT_MENU = [
       {
         id: 'huoguo',
         name: '火锅',
@@ -423,6 +437,45 @@
         dishes: ['汉堡', '炸鸡', '披萨', '寿司', '麻辣烫', '螺蛳粉', '饺子', '馄饨', '盖浇饭', '沙县小吃', '黄焖鸡米饭', '兰州拉面', '麻辣香锅', '酸辣粉', '肉夹馍', '凉皮', '煲仔饭', '咖喱饭', '冒菜', '鸭血粉丝汤']
       }
     ];
+
+    /* ============================================================
+       ③ 本地保存：让网页上增删的菜，刷新 / 下次打开后依然保留
+       - 增删菜品后会自动调用 saveMenu() 存进浏览器 localStorage
+       - 想恢复成上面代码里写死的默认菜单，点右上角「↺ 恢复默认」
+       ============================================================ */
+    const STORAGE_KEY = 'qiqi-order-menu-v1';      // 存菜单用的 localStorage key
+
+    // 从 localStorage 读菜单，读不到就深拷贝一份默认菜单
+    function loadMenu() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const data = JSON.parse(saved);
+          if (Array.isArray(data) && data.length) return data;
+        }
+      } catch (e) { /* 读取失败就退回默认 */ }
+      return JSON.parse(JSON.stringify(DEFAULT_MENU));
+    }
+
+    // 把当前菜单保存到 localStorage（增删菜品后调用）
+    function saveMenu() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(MENU)); } catch (e) {}
+    }
+
+    // 恢复成代码里写死的默认菜单（清除本地保存）
+    function resetMenu() {
+      if (!confirm('恢复默认菜单？\n你在网页上增删的菜会被清掉。')) return;
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      MENU = JSON.parse(JSON.stringify(DEFAULT_MENU));
+      selected = [];
+      renderTabs();
+      renderDishes();
+      renderSelected();
+      showToast('已恢复默认菜单');
+    }
+
+    // 当前实际使用的菜单（优先本地保存，其次默认）
+    let MENU = loadMenu();
 
     // ---- 全局状态 ----
     let currentCatId = MENU[0].id;                 // 当前选中的分类
@@ -640,6 +693,7 @@
       selected = selected.filter(s => !(s.catId === catId && s.dish === dish));
       renderDishes();
       renderSelected();
+      saveMenu();                                  // 保存改动到本地
       showToast('已删除「' + dish + '」');
     }
 
@@ -659,6 +713,7 @@
       cat.dishes.push(name);
       closeAddModal();
       renderDishes();
+      saveMenu();                                  // 保存改动到本地
       showToast('已添加「' + name + '」');
     }
     // 点弹窗遮罩空白处关闭
