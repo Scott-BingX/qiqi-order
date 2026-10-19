@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 手机优先：viewport 保证在手机上正常缩放 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>琪琪点菜专用✨</title>
+
+  <style>
+    /* ============================================================
+       ①【改这里】主题颜色变量
+       想换配色，只需要改下面这几个变量的值即可，全站自动生效。
+       ============================================================ */
+    :root {
+      --pink:        #ff6b9d;  /* 主粉色（标题、选中、按钮） */
+      --pink-dark:   #e85485;  /* 主粉深一点（按钮按下） */
+      --pink-light:  #ffd6e0;  /* 浅粉（边框、标签） */
+      --pink-bg:     #fff0f3;  /* 最浅粉（背景、选中项底） */
+      --text:        #5a3a44;  /* 正文深色 */
+      --text-weak:   #c08a97;  /* 次要文字 */
+      --white:       #ffffff;  /* 卡片白 */
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, var(--pink-bg), #fff5f7);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;              /* 手机满屏，dvh 兼容 iOS 地址栏 */
+      max-width: 520px;            /* 桌面打开时居中，像个小程序 */
+      margin: 0 auto;
+      box-shadow: 0 0 40px rgba(255, 107, 157, 0.12);
+      overflow: hidden;
+    }
+
+    /* ===== 顶部标题 ===== */
+    header {
+      padding: 18px 16px 6px;
+      text-align: center;
+      flex: none;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 25px;
+      letter-spacing: 1px;
+      color: var(--pink);
+      font-weight: 800;
+    }
+    header .sub {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--text-weak);
+    }
+
+    /* ===== 分类标签（横向可滑动） ===== */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 12px;
+      flex: none;
+      scrollbar-width: none;      /* 隐藏滚动条，更干净 */
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      flex: 0 0 auto;
+      padding: 8px 16px;
+      border-radius: 999px;
+      background: var(--white);
+      border: 1px solid var(--pink-light);
+      color: #b06a7d;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .2s;
+    }
+    .tab.active {
+      background: var(--pink);
+      color: #fff;
+      border-color: var(--pink);
+      box-shadow: 0 4px 12px rgba(255, 107, 157, 0.35);
+    }
+
+    /* ===== 菜品卡片区（中间，可滚动） ===== */
+    .dishes {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px 14px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);  /* 手机两列 */
+      gap: 10px;
+      align-content: start;
+    }
+    .dish {
+      position: relative;
+      background: var(--white);
+      border-radius: 16px;
+      padding: 18px 12px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(255, 107, 157, 0.10);
+      cursor: pointer;
+      transition: transform .15s, background .2s, box-shadow .2s;
+      user-select: none;
+    }
+    .dish:active { transform: scale(0.96); }
+    /* 选中高亮 */
+    .dish.selected {
+      background: var(--pink);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(255, 107, 157, 0.40);
+      transform: scale(1.02);
+    }
+    /* 随机抽中时的弹跳动画 */
+    .dish.pop { animation: pop .5s ease; }
+    @keyframes pop {
+      0%   { transform: scale(0.6); }
+      60%  { transform: scale(1.12); }
+      100% { transform: scale(1.02); }
+    }
+
+    /* 菜品右上角删除小按钮 */
+    .dish .del {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: var(--pink-bg);
+      color: #d8758c;
+      font-size: 14px;
+      line-height: 22px;
+      padding: 0;
+      cursor: pointer;
+      opacity: 0.7;
+    }
+    .dish .del:hover { opacity: 1; }
+    .dish.selected .del { background: rgba(255,255,255,0.9); color: var(--pink-dark); }
+
+    /* “添加菜品”卡片（虚线） */
+    .dish.add {
+      background: transparent;
+      border: 2px dashed var(--pink-light);
+      color: var(--pink);
+      font-size: 30px;
+      box-shadow: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 70px;
+    }
+
+    /* ===== 底部清单区 ===== */
+    .summary {
+      flex: none;
+      background: var(--white);
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -4px 20px rgba(255, 107, 157, 0.10);
+      padding: 12px 14px 16px;
+    }
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .summary-title { font-size: 15px; font-weight: 700; color: var(--pink); }
+    .clear-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-weak);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* 已选菜品小标签列表 */
+    .selected-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 8px 0;
+      max-height: 22vh;          /* 太高时内部滚动 */
+      overflow-y: auto;
+    }
+    .selected-item {
+      background: var(--pink-bg);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .selected-item .x {
+      border: none;
+      background: transparent;
+      color: #d8758c;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      line-height: 1;
+    }
+
+    /* 备注输入框 */
+    .note {
+      width: 100%;
+      border: 1px solid var(--pink-light);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      color: var(--text);
+    }
+    .note:focus { border-color: var(--pink); }
+
+    /* 底部两个操作按钮 */
+    .actions { display: flex; gap: 10px; margin-top: 10px; }
+    .btn {
+      flex: 1;
+      padding: 13px;
+      border-radius: 14px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .1s;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-random {
+      background: var(--pink);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(255, 107, 157, 0.35);
+    }
+    .btn-copy {
+      background: #fff;
+      color: var(--pink);
+      border: 1.5px solid var(--pink);
+    }
+
+    /* ===== Toast 提示 ===== */
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 150px;
+      transform: translateX(-50%);
+      background: rgba(90, 58, 68, 0.92);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity .25s;
+      pointer-events: none;
+      z-index: 100;
+      max-width: 86vw;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ===== 随机点菜遮罩动画 ===== */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 90;
+    }
+    .overlay-card {
+      background: #fff;
+      border-radius: 22px;
+      padding: 28px 32px;
+      text-align: center;
+      box-shadow: 0 10px 40px rgba(255, 107, 157, 0.30);
+      min-width: 200px;
+    }
+    .overlay-emoji { font-size: 44px; animation: bounce .6s infinite; }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50%     { transform: translateY(-12px); }
+    }
+    .overlay-name {
+      margin-top: 12px;
+      font-size: 18px;
+      color: var(--pink);
+      font-weight: 700;
+      min-height: 26px;
+    }
+
+    /* ===== 添加菜品弹窗 ===== */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(90, 58, 68, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 95;
+    }
+    .modal-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 22px;
+      width: 82%;
+      max-width: 320px;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; color: var(--pink); text-align: center; }
+    .modal-input {
+      width: 100%;
+      margin: 16px 0;
+      padding: 10px 12px;
+      border: 1px solid var(--pink-light);
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+    }
+    .modal-input:focus { border-color: var(--pink); }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-actions .btn { font-size: 14px; padding: 10px; }
+    .btn-cancel { background: var(--pink-bg); color: var(--text-weak); }
+    .btn-confirm { background: var(--pink); color: #fff; }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部标题 -->
+  <header>
+    <h1>琪琪点菜专用✨</h1>
+    <div class="sub">点一点卡片选菜 · 右上角 ✕ 可删菜 · ＋ 添加新菜</div>
+  </header>
+
+  <!-- 分类标签 -->
+  <nav class="tabs" id="tabs"></nav>
+
+  <!-- 菜品卡片区 -->
+  <main class="dishes" id="dishes"></main>
+
+  <!-- 底部：已选清单 + 备注 + 按钮 -->
+  <section class="summary">
+    <div class="summary-header">
+      <div class="summary-title">🛒 已选清单（<span id="count">0</span>）</div>
+      <button class="clear-btn" onclick="clearAll()">清空全部</button>
+    </div>
+    <div class="selected-list" id="selectedList"></div>
+
+    <textarea class="note" id="note" rows="2" placeholder="备注：比如少辣、不要香菜～"></textarea>
+
+    <div class="actions">
+      <button class="btn btn-random" onclick="randomPick()">🎲 随机点菜</button>
+      <button class="btn btn-copy" onclick="copyList()">📋 复制清单</button>
+    </div>
+  </section>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- 随机点菜遮罩 -->
+  <div class="overlay" id="overlay" style="display:none">
+    <div class="overlay-card">
+      <div class="overlay-emoji">🎲</div>
+      <div class="overlay-name" id="overlayName">抽签中…</div>
+    </div>
+  </div>
+
+  <!-- 添加菜品弹窗 -->
+  <div class="modal" id="addModal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-title">➕ 添加新菜品</div>
+      <input class="modal-input" id="addInput" placeholder="输入菜品名字，比如：毛肚" maxlength="20" />
+      <div class="modal-actions">
+        <button class="btn btn-cancel" onclick="closeAddModal()">取消</button>
+        <button class="btn btn-confirm" onclick="confirmAdd()">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ============================================================
+       ②【改这里】菜品数据
+       每个分类：id(唯一) / name(名称) / emoji(图标) / dishes(菜品数组)
+       增删菜品既可以在下面的数组里改，也可以在网页上直接点 ✕ / ＋。
+       ============================================================ */
+    const MENU = [
+      {
+        id: 'huoguo',
+        name: '火锅',
+        emoji: '🍲',
+        dishes: ['毛肚', '肥牛', '虾滑', '鸭血', '黄喉', '千层肚', '嫩牛肉', '土豆片', '藕片', '油条', '午餐肉', '鸭肠', '虾饺', '牛肉丸', '蟹柳', '冻豆腐', '宽粉', '娃娃菜', '金针菇', '鸭胗']
+      },
+      {
+        id: 'shaokao',
+        name: '烧烤',
+        emoji: '🍢',
+        dishes: ['羊肉串', '烤鸡翅', '烤茄子', '烤韭菜', '烤玉米', '烤生蚝', '烤五花肉', '烤金针菇', '烤面筋', '烤馒头片', '烤鸡皮', '烤鱿鱼', '烤大虾', '烤年糕', '烤豆干', '烤青椒', '烤香菇', '烤鸡胗', '烤培根金针菇', '烤面包片']
+      },
+      {
+        id: 'tianpin',
+        name: '奶茶甜品',
+        emoji: '🧋',
+        dishes: ['珍珠奶茶', '杨枝甘露', '芒果班戟', '提拉米苏', '草莓蛋糕', '冰淇淋', '芋圆', '双皮奶', '布丁', '芝士蛋糕', '芝士奶盖', '黑糖珍珠', '烧仙草', '芒果冰沙', '草莓奶昔', '蛋挞', '雪媚娘', '马卡龙', '曲奇饼干', '熔岩蛋糕']
+      },
+      {
+        id: 'jiacangcai',
+        name: '家常菜',
+        emoji: '🍚',
+        dishes: ['番茄炒蛋', '红烧肉', '糖醋排骨', '麻婆豆腐', '可乐鸡翅', '鱼香肉丝', '青椒土豆丝', '番茄牛腩', '酸辣汤', '清炒时蔬', '宫保鸡丁', '回锅肉', '水煮肉片', '红烧茄子', '蒜蓉西兰花', '干煸豆角', '拍黄瓜', '糖醋里脊', '京酱肉丝', '地三鲜', '香菇青菜', '紫菜蛋花汤', '冬瓜排骨汤', '蛋炒饭', '清蒸鲈鱼', '木须肉', '白灼虾', '酸菜鱼', '辣子鸡', '口水鸡', '梅菜扣肉', '粉蒸肉', '小炒肉', '蚂蚁上树', '虎皮青椒', '鸡蛋羹', '酸辣土豆丝', '手撕包菜', '油焖大虾', '红烧鸡爪', '椒盐虾', '葱爆羊肉', '芹菜炒香干', '玉米排骨汤', '西红柿蛋汤', '韭菜盒子', '皮蛋瘦肉粥']
+      },
+      {
+        id: 'kuaican',
+        name: '外卖快餐',
+        emoji: '🍔',
+        dishes: ['汉堡', '炸鸡', '披萨', '寿司', '麻辣烫', '螺蛳粉', '饺子', '馄饨', '盖浇饭', '沙县小吃', '黄焖鸡米饭', '兰州拉面', '麻辣香锅', '酸辣粉', '肉夹馍', '凉皮', '煲仔饭', '咖喱饭', '冒菜', '鸭血粉丝汤']
+      }
+    ];
+
+    // ---- 全局状态 ----
+    let currentCatId = MENU[0].id;                 // 当前选中的分类
+    let selected = [];                              // 已选菜品数组，元素形如 {key, catId, catName, emoji, dish}
+    let addTargetCatId = null;                      // 当前要往哪个分类添加菜品
+    let randomTimer = null;                         // 随机动画定时器
+
+    // 获取 DOM
+    const tabsEl = document.getElementById('tabs');
+    const dishesEl = document.getElementById('dishes');
+    const selectedEl = document.getElementById('selectedList');
+    const countEl = document.getElementById('count');
+    const noteEl = document.getElementById('note');
+    const toastEl = document.getElementById('toast');
+    const overlayEl = document.getElementById('overlay');
+    const overlayNameEl = document.getElementById('overlayName');
+    const addModalEl = document.getElementById('addModal');
+    const addInputEl = document.getElementById('addInput');
+
+    // 根据 id 找到分类对象
+    function getCat(id) { return MENU.find(c => c.id === id); }
+
+    /* ============ 渲染：分类标签 ============ */
+    function renderTabs() {
+      tabsEl.innerHTML = MENU.map(c => `
+        <div class="tab ${c.id === currentCatId ? 'active' : ''}" onclick="switchCat('${c.id}')">
+          ${c.emoji} ${c.name}
+        </div>
+      `).join('');
+    }
+
+    /* ============ 切换分类 ============ */
+    function switchCat(id) {
+      currentCatId = id;
+      renderTabs();
+      renderDishes();
+    }
+
+    /* ============ 判断某道菜是否已选中 ============ */
+    function keyOf(catId, dish) { return catId + '::' + dish; }
+    function isSelected(catId, dish) { return selected.some(s => s.key === keyOf(catId, dish)); }
+
+    /* ============ 渲染：菜品卡片 ============ */
+    function renderDishes() {
+      const cat = getCat(currentCatId);
+      // 生成所有菜品卡片
+      const cards = cat.dishes.map(dish => {
+        const sel = isSelected(cat.id, dish) ? 'selected' : '';
+        return `
+          <div class="dish ${sel}" onclick="toggleDish('${cat.id}', '${escapeJS(dish)}')">
+            <button class="del" onclick="deleteDish(event, '${cat.id}', '${escapeJS(dish)}')">✕</button>
+            ${dish}
+          </div>
+        `;
+      });
+      // 末尾加一个“添加菜品”卡片
+      cards.push(`<div class="dish add" onclick="openAddModal('${cat.id}')">＋</div>`);
+      dishesEl.innerHTML = cards.join('');
+    }
+
+    /* ============ 选中 / 取消选中 ============ */
+    function toggleDish(catId, dish) {
+      const key = keyOf(catId, dish);
+      const idx = selected.findIndex(s => s.key === key);
+      if (idx >= 0) {
+        selected.splice(idx, 1);                    // 已选中 -> 取消
+      } else {
+        const cat = getCat(catId);
+        selected.push({ key, catId, catName: cat.name, emoji: cat.emoji, dish });
+      }
+      renderDishes();
+      renderSelected();
+    }
+
+    /* ============ 渲染：底部已选清单 ============ */
+    function renderSelected() {
+      countEl.textContent = selected.length;
+      if (selected.length === 0) {
+        selectedEl.innerHTML = '<div style="color:#c08a97;font-size:13px">还没选菜，点上面卡片吧～</div>';
+        return;
+      }
+      selectedEl.innerHTML = selected.map(s => `
+        <span class="selected-item">
+          ${s.dish}
+          <button class="x" onclick="removeSelected('${s.key}')">✕</button>
+        </span>
+      `).join('');
+    }
+
+    /* ============ 单个移除已选菜品 ============ */
+    function removeSelected(key) {
+      selected = selected.filter(s => s.key !== key);
+      renderDishes();
+      renderSelected();
+    }
+
+    /* ============ 清空全部 ============ */
+    function clearAll() {
+      if (selected.length === 0) { showToast('还没有选菜哦～'); return; }
+      selected = [];
+      renderDishes();
+      renderSelected();
+      showToast('已清空');
+    }
+
+    /* ============ 随机点菜：从全部菜品挑 1~3 个 ============ */
+    function randomPick() {
+      // 汇总所有分类的所有菜品
+      const all = [];
+      MENU.forEach(c => c.dishes.forEach(d => all.push({ catId: c.id, catName: c.name, emoji: c.emoji, dish: d })));
+      if (all.length === 0) { showToast('还没有菜品哦～'); return; }
+
+      // 随机数量 1~3（不超过总菜品数）
+      const count = Math.min(1 + Math.floor(Math.random() * 3), all.length);
+      // 洗牌后取前 count 个，保证不重复
+      const shuffled = [...all].sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, count);
+
+      // 先播放“抽签中”滚动动画，再落定选中
+      showOverlay();
+      const start = Date.now();
+      randomTimer = setInterval(() => {
+        // 快速轮播随机菜品名，制造悬念
+        overlayNameEl.textContent = all[Math.floor(Math.random() * all.length)].dish;
+        if (Date.now() - start > 900) {            // 动画时长约 0.9 秒
+          clearInterval(randomTimer);
+          randomTimer = null;
+          hideOverlay();
+          // 落定：把这些菜自动选中（已选中的跳过，避免重复）
+          picked.forEach(p => {
+            if (!isSelected(p.catId, p.dish)) {
+              selected.push({ key: keyOf(p.catId, p.dish), catId: p.catId, catName: p.catName, emoji: p.emoji, dish: p.dish });
+            }
+          });
+          renderDishes();
+          renderSelected();
+          flashPicked(picked);   // 给当前分类里抽中的卡片加弹跳动画
+          showToast('抽中了：' + picked.map(p => p.dish).join('、'));
+        }
+      }, 80);
+    }
+
+    // 让抽中的卡片闪烁一下（只在当前分类可见时生效）
+    function flashPicked(picked) {
+      picked.forEach(p => {
+        if (p.catId !== currentCatId) return;
+        const cards = dishesEl.querySelectorAll('.dish');
+        cards.forEach(card => {
+          if (card.textContent.trim().replace('✕', '') === p.dish) {
+            card.classList.add('pop');
+            setTimeout(() => card.classList.remove('pop'), 500);
+          }
+        });
+      });
+    }
+
+    /* ============ 复制清单到剪贴板 ============ */
+    async function copyList() {
+      if (selected.length === 0) { showToast('先选几个菜吧～'); return; }
+
+      // 拼接文本：按分类分组
+      let text = '✨ 老公，我今天想吃这些 ✨\n\n';
+      const grouped = {};
+      selected.forEach(s => {
+        if (!grouped[s.catName]) grouped[s.catName] = [];
+        grouped[s.catName].push(s.dish);
+      });
+      for (const catName in grouped) {
+        const emoji = selected.find(s => s.catName === catName).emoji;
+        text += `【${emoji} ${catName}】\n${grouped[catName].join('、')}\n\n`;
+      }
+      const note = noteEl.value.trim();
+      if (note) text += `📝 备注：${note}\n`;
+      text += '\n💕 爱你的琪琪～';
+
+      try {
+        await copyToClipboard(text);
+        showToast('已复制，快去发给老公吧～💕');
+      } catch (e) {
+        showToast('复制失败，请手动复制');
+      }
+    }
+
+    // 复制函数（兼容旧浏览器 / 非 https 环境，带降级方案）
+    function copyToClipboard(text) {
+      return new Promise((resolve, reject) => {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(resolve).catch(() => fallbackCopy(text, resolve, reject));
+        } else {
+          fallbackCopy(text, resolve, reject);
+        }
+      });
+    }
+    function fallbackCopy(text, resolve, reject) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      ok ? resolve() : reject(new Error('copy failed'));
+    }
+
+    /* ============ 删除菜品（卡片右上角 ✕） ============ */
+    function deleteDish(event, catId, dish) {
+      event.stopPropagation();                       // 阻止触发卡片的选中事件
+      if (!confirm(`确定删除「${dish}」吗？`)) return;
+      const cat = getCat(catId);
+      cat.dishes = cat.dishes.filter(d => d !== dish);
+      // 如果这道菜在已选清单里，一并移除
+      selected = selected.filter(s => !(s.catId === catId && s.dish === dish));
+      renderDishes();
+      renderSelected();
+      showToast('已删除「' + dish + '」');
+    }
+
+    /* ============ 添加菜品弹窗 ============ */
+    function openAddModal(catId) {
+      addTargetCatId = catId;
+      addInputEl.value = '';
+      addModalEl.style.display = 'flex';
+      addInputEl.focus();
+    }
+    function closeAddModal() { addModalEl.style.display = 'none'; }
+    function confirmAdd() {
+      const name = addInputEl.value.trim();
+      if (!name) { showToast('请输入菜品名字～'); return; }
+      const cat = getCat(addTargetCatId);
+      if (cat.dishes.includes(name)) { showToast('这个菜已经有了哦～'); return; }
+      cat.dishes.push(name);
+      closeAddModal();
+      renderDishes();
+      showToast('已添加「' + name + '」');
+    }
+    // 点弹窗遮罩空白处关闭
+    addModalEl.addEventListener('click', (e) => {
+      if (e.target === addModalEl) closeAddModal();
+    });
+
+    /* ============ 随机动画遮罩 ============ */
+    function showOverlay() { overlayEl.style.display = 'flex'; overlayNameEl.textContent = '抽签中…'; }
+    function hideOverlay() { overlayEl.style.display = 'none'; }
+
+    /* ============ Toast 提示 ============ */
+    let toastTimer = null;
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2000);
+    }
+
+    // 处理菜品名中可能含引号的情况，转义后放进内联 onclick
+    function escapeJS(str) {
+      return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    /* ============ 首次加载 ============ */
+    renderTabs();
+    renderDishes();
+    renderSelected();
+  </script>
+</body>
+</html>
